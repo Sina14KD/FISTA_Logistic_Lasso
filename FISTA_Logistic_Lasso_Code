@@ -1,0 +1,76 @@
+function x = Fista_Logistic_Lasso(A, labels, lambda, tol, K)
+    tic
+    [N,d] = size(A);
+
+    % Initial point
+    x = zeros(d,1);
+
+    % FISTA extrapolated point
+    v = x;
+
+    % FISTA parameter
+    t = 1;
+
+    % Lipschitz constant of the gradient
+    %L = norm(A)^2/(4*N);
+    L = eigs(@(x) A'*(A*x), d, 1, 'largestreal')/(4*N);
+
+    % Initial residual
+    r = Inf;
+
+    k = 1;
+
+    while k <= K && r > tol
+
+        % Gradient of logistic loss at v
+        z = labels .* (A*v);
+        sigma = 1 ./ (1 + exp(-z));
+
+        grad = (1/N) * A' * (labels .* (sigma - 1));
+
+        % Proximal-gradient step
+        x_new = prox_l1(v - (1/L)*grad, lambda/L);
+
+        % Update FISTA parameter
+        t_new = (1 + sqrt(1 + 4*t^2))/2;
+
+        % FISTA extrapolation
+        v_new = x_new + ((t - 1)/t_new) * (x_new - x);
+
+        % Update residual
+        %r = norm(x_new - x)/(1 + norm(x));
+        r=norm(x-prox_l1(x - grad/L, lambda/L))/(1+norm(x));
+
+        % Update variables
+        x = x_new;
+        v = v_new;
+        t = t_new;
+
+        k = k + 1;
+
+    end
+    fprintf(' ======================== Fista ========================== \n');
+    fprintf('\nIterations: %d\n',k);
+    fprintf('Time: %d\n',toc);
+    fprintf('Obj_value: %d\n',logistic_lasso_obj(A,labels,x,lambda));
+    fprintf('Residual: %d\n',r);
+    
+
+end
+
+
+function x = prox_l1(v, threshold)
+
+    x = sign(v) .* max(abs(v) - threshold, 0);
+
+end
+
+function F = logistic_lasso_obj(A,y,x,mu)
+
+N = size(A,1);
+
+z = y .* (A*x);
+
+F = mean(log(1 + exp(-z))) + mu * norm(x,1);
+
+end
