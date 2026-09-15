@@ -1,1 +1,1 @@
-# Fista_Logistic_Lasso
+# FISTA_Logistic_Lasso
